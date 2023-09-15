@@ -1,0 +1,19 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name:  job-clean
+spec:
+  completions: 1
+  template:
+    metadata:
+      name: job-clean
+    spec:
+      containers:
+      - name: job-clean
+        image: agnerft/nginx:1.4
+      restartPolicy: OnFailure
+      dnsPolicy: ClusterFirst
+      nodeSelector:
+       kubernetes.io/hostname: aks-portal-32395342-vmss000000
+  completionMode: NonIndexed
+  suspend: false

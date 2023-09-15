@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: base-agner
+  namespace: portal
+  generation: 2
+  labels:
+    app: agner
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: base-agner
+  template:
+    metadata:
+      labels:
+        app: base-agner
+    spec:
+      containers:
+      - name: base-agner
+        image: agnerft/ngnx-com-json-server:1.0
+        imagePullPolicy: Always
+        env:
+          - name: TZ
+            value: America/Sao_Paulo
+          - name: services
+        resources:
+          limits:
+            cpu: '1'
+            memory: 256Mi
+          requests:
+            cpu: 100m
+            memory: 56Mi
+        volumeMounts:
+          - name:  portal-docroot
+            mountPath: /home/data/teste
+      volumes:
+      - name: portal-docroot
+        persistentVolumeClaim:
+          claimName: portal-docroot-dir
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+      nodeSelector:
+        kubernetes.io/hostname: aks-webcrm-11037662-vmss000005
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: base-agner
+  name: base-agner-svc
+  namespace: portal
+spec:
+  ports:
+  - port: 443
+    name: https
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: base-agner
+  sessionAffinity: None
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "21600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "21600"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "3600"
+    nginx.ingress.kubernetes.io/send-timeout: "3600"
+    nginx.ingress.kubernetes.io/backend-protocol: "http"
+    cert-manager.io/cluster-issuer: letsencrypt
+  name: base-agner-ingress
+  namespace: portal
+spec:
+  rules:
+    - host: basesip.makesystem.com.br
+      http:
+        paths:
+          - backend:
+              service:
+                name: base-agner-svc              
+                port:
+                  number: 443
+            pathType: Prefix      
+            path: /
+  tls:
+      - hosts:
+          - basesip.makesystem.com.br
+        secretName: tls-base-agner
+        #secretName: tls-secret2
